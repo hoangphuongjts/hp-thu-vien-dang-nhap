@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Kết nối Google với Thư viện sách</title>
+    <style>
+      button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2.75rem; }
+      * { box-sizing: border-box; }
+      :root {
+        --blue: #0b57d0;
+        --blue-dark: #0842a0;
+        --bg: #ffffff;
+        --surface: #f8f9fa;
+        --surface-2: #eef3fb;
+        --ink: #1f1f1f;
+        --ink-2: #444746;
+        --ink-3: #5f6368;
+        --line: #dadce0;
+        --ok: #137333;
+        --ok-bg: #e6f4ea;
+        --warn-bg: #fef7e0;
+        --warn-ink: #7a5c00;
+        --err-bg: #fce8e6;
+        --err-ink: #a50e0e;
+        --radius: 16px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #131314;
+          --surface: #1e1f20;
+          --surface-2: #1c2733;
+          --ink: #e3e3e3;
+          --ink-2: #c4c7c5;
+          --ink-3: #9aa0a6;
+          --line: #3c4043;
+          --ok: #81c995;
+          --ok-bg: #1e3325;
+          --warn-bg: #3a2f10;
+          --warn-ink: #fdd663;
+          --err-bg: #3d1d1a;
+          --err-ink: #f28b82;
+          --blue: #a8c7fa;
+          --blue-dark: #a8c7fa;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Roboto, "Segoe UI", Arial, sans-serif;
+        font-size: 17px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 560px; margin: 0 auto; padding: 28px 20px 56px; }
+      h1 { font-size: 26px; line-height: 1.3; margin: 0 0 10px; font-weight: 500; letter-spacing: 0; }
+      .lede { color: var(--ink-2); margin: 0 0 26px; font-size: 17px; }
+      .steps { display: grid; gap: 12px; margin: 0 0 28px; padding: 0; list-style: none; counter-reset: step; }
+      .steps li {
+        display: flex; gap: 14px; align-items: flex-start;
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: var(--radius); padding: 14px 16px;
+      }
+      .steps .num {
+        flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+        background: var(--blue); color: #fff; font-weight: 700; font-size: 16px;
+        display: flex; align-items: center; justify-content: center; margin-top: 2px;
+      }
+      @media (prefers-color-scheme: dark) { .steps .num { color: #0b2a5b; } }
+      .steps p { margin: 0; }
+      .steps strong { display: block; font-size: 17px; }
+      .steps span { color: var(--ink-2); font-size: 15px; }
+      .card {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        padding: 22px 18px; text-align: center; background: var(--bg);
+      }
+      .btn-google {
+        display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+        width: 100%; max-width: 380px; min-height: 56px;
+        background: var(--blue); color: #fff; border: 0; border-radius: 999px;
+        font-size: 18px; font-weight: 600; cursor: pointer; padding: 12px 22px;
+        font-family: inherit;
+      }
+      .btn-google:hover { background: var(--blue-dark); }
+      .btn-google:disabled { opacity: .55; cursor: not-allowed; }
+      .btn-google .g {
+        background: #fff; border-radius: 50%; width: 30px; height: 30px;
+        display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+      }
+      .btn-secondary {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 48px; padding: 10px 22px; margin-top: 14px;
+        background: transparent; color: var(--blue); border: 1.5px solid var(--blue);
+        border-radius: 999px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit;
+      }
+      .status { margin-top: 16px; font-size: 15px; color: var(--ink-2); min-height: 24px; }
+      .status.err { color: var(--err-ink); }
+      .notice {
+        border-radius: var(--radius); padding: 16px 18px; font-size: 16px; text-align: left;
+        margin-top: 4px;
+      }
+      .notice.wait { background: var(--warn-bg); color: var(--warn-ink); }
+      .notice.info { background: var(--surface-2); color: var(--ink); }
+      .notice strong { display: block; margin-bottom: 4px; font-size: 17px; }
+      .notice p { margin: 0; }
+      .notice .btn-secondary { margin-top: 12px; }
+      .panel { display: none; margin-top: 6px; text-align: left; }
+      .panel.show { display: block; }
+      .panel.success {
+        background: var(--ok-bg); border-radius: var(--radius); padding: 20px 18px; text-align: center;
+      }
+      .panel.success .big { font-size: 20px; font-weight: 700; line-height: 1.4; margin: 0 0 8px; }
+      .panel.success .sub { margin: 0; color: var(--ink-2); font-size: 16px; }
+
+      .panel.error {
+        background: var(--err-bg); color: var(--err-ink); border-radius: var(--radius); padding: 16px 18px;
+      }
+      .panel.error strong { display: block; font-size: 17px; margin-bottom: 4px; }
+      .panel.error p { margin: 0 0 6px; }
+      .panel.error .diag {
+        font-family: ui-monospace, "SF Mono", Consolas, monospace;
+        font-size: 13px; line-height: 1.5; word-break: break-word; opacity: .85;
+        border-top: 1px solid currentColor; padding-top: 8px; margin-top: 10px;
+      }
+      .panel.error .btn-secondary { color: var(--err-ink); border-color: var(--err-ink); }
+      .account {
+        display: none; align-items: center; gap: 14px; text-align: left;
+        background: var(--ok-bg); border-radius: var(--radius); padding: 14px 16px; margin-top: 18px;
+      }
+      .account.show { display: flex; }
+      .account img { width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto; }
+      .account .avatar-fallback {
+        width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto;
+        background: var(--blue); color: #fff; display: none; align-items: center; justify-content: center;
+        font-size: 20px; font-weight: 700;
+      }
+      .account .who strong { display: block; font-size: 17px; word-break: break-word; }
+      .account .who span { color: var(--ink-2); font-size: 15px; word-break: break-word; }
+      .account .badge { color: var(--ok); font-weight: 700; font-size: 14px; display: block; }
+      .safe {
+        margin-top: 26px; color: var(--ink-3); font-size: 14.5px; line-height: 1.6;
+        border-top: 1px solid var(--line); padding-top: 16px;
+      }
+      .safe strong { color: var(--ink-2); }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>Kết nối Google với thư viện sách của anh</h1>
+      <p class="lede">Chỉ cần đăng nhập tài khoản Google ở trang này là sách anh đã tải lên Google Play Sách <strong>tự đồng bộ về app Hoàng Phương AI Ebook Library</strong> — không cần copy hay nhập thêm mã gì nữa.</p>
+
+      <ol class="steps">
+        <li>
+          <span class="num">1</span>
+          <p><strong>Bấm nút kết nối trong app Thư viện trước</strong><span>Bấm nút “Kết nối tài khoản Google” trong app Hoàng Phương AI Ebook Library — app sẽ chờ kết nối trong 10 phút. Trang này mở từ link đó hay mở riêng đều đăng nhập được.</span></p>
+        </li>
+        <li>
+          <span class="num">2</span>
+          <p><strong>Đăng nhập tài khoản Google</strong><span>Bấm nút ở dưới, chọn đúng tài khoản đã dùng để tải sách lên Play Sách rồi nhập mật khẩu như bình thường. Nếu trình duyệt hỏi cho phép mở cửa sổ bật lên (pop-up) thì anh bấm Cho phép nhé.</span></p>
+        </li>
+        <li>
+          <span class="num">3</span>
+          <p><strong>Xong — quay lại app xem sách</strong><span>Đăng nhập xong là kết quả tự gửi về app, sách tự đồng bộ về. Anh không phải làm thêm bước nào nữa.</span></p>
+        </li>
+      </ol>
+
+      <section class="card" aria-label="Kết nối Google">
+        <!-- Không có khóa phiên trong địa chỉ: vẫn đăng nhập bình thường,
+             hệ thống tự ghép token với phiên đang chờ mới nhất trong app -->
+        <div id="noSession" class="notice info" hidden>
+          <strong>Không cần chìa khóa hay mã gì cả — anh cứ đăng nhập ở đây</strong>
+          <p>Chỉ cần anh đã bấm nút “Kết nối tài khoản Google” trong app Thư viện trước (app đang chờ trong 10 phút), anh cứ đăng nhập Google ở ngay dưới đây — hệ thống sẽ tự ghép nối kết quả với app, anh không phải nhập thêm chìa khóa hay mã nào. Nếu anh chưa bấm nút đó trong app, anh quay lại app <strong>Hoàng Phương AI Ebook Library</strong>, vào mục “Play Sách đã tải lên”, bấm nút “Kết nối tài khoản Google” trước rồi quay lại đây đăng nhập nhé.</p>
+          <button id="btnRecheck" class="btn-secondary" type="button">Kiểm tra lại kết nối</button>
+          <p id="recheckMsg" hidden style="margin-top:10px;">Không thấy chìa khóa cũng không sao anh nhé — anh cứ bấm nút “Đăng nhập bằng Google” ở dưới là được, hệ thống tự ghép nối khi app đang chờ.</p>
+        </div>
+
+        <div id="waitNotice" class="notice wait" hidden>
+          <strong>Đang chờ cấu hình</strong>
+          <p>Phần đăng nhập đang được hoàn thiện khâu cuối (khai báo địa chỉ trang này với Google). Anh chưa cần làm gì thêm — khi sẵn sàng, nút đăng nhập ở đây sẽ bấm được ngay.</p>
+        </div>
+
+        <div id="signInArea">
+          <button id="btnSignIn" class="btn-google" type="button">
+            <span class="g" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+            </span>
+            <span id="btnLabel">Đăng nhập bằng Google</span>
+          </button>
+          <p style="margin:12px 0 0;font-size:14.5px;color:var(--ink-3);">Mỗi lần bấm, Google sẽ cho anh chọn tài khoản — không tự lấy tài khoản mặc định. Có nhiều tài khoản có sách thì anh đăng nhập lần lượt từng tài khoản, sách sẽ gộp về cùng một thư viện.</p>
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+        </div>
+
+        <div id="successPanel" class="panel success" role="status">
+          <p class="big">✅ Đã đăng nhập xong — Anh quay lại app Thư viện, sách đang tự đồng bộ về.</p>
+          <p class="sub" id="successSub">Anh không cần copy hay nhập thêm mã gì nữa. Trang này đóng lại được rồi ạ.</p>
+          <button id="btnMore" class="btn-secondary" type="button">Kết nối thêm một tài khoản nữa</button>
+        </div>
+
+
+        <div id="errorPanel" class="panel error" role="alert">
+          <strong>Chưa kết nối được</strong>
+          <p id="errorText"></p>
+          <p id="errorDiag" class="diag" hidden></p>
+          <button id="btnRetry" class="btn-secondary" type="button">Thử đăng nhập lại</button>
+        </div>
+
+        <div id="account" class="account">
+          <img id="accAvatar" alt="" />
+          <span id="accFallback" class="avatar-fallback"></span>
+          <div class="who">
+            <span class="badge">✓ Tài khoản vừa kết nối</span>
+            <strong id="accName"></strong>
+            <span id="accEmail"></span>
+          </div>
+        </div>
+      </section>
+
+      <p class="safe">
+        <strong>An toàn:</strong> Anh đăng nhập trực tiếp trên cửa sổ chính thức của Google — trang này không thấy và không lưu mật khẩu của anh. Sau khi đăng nhập, kết quả được gửi thẳng về app Thư viện của anh; trang này <strong>không hiển thị mã nào để copy</strong> và không lưu lại thông tin đăng nhập.
+      </p>
+    </main>
+
+    <script>
+      // ============================================================
+      // CẤU HÌNH — Web Client ID và app thư viện nhận kết quả.
+      // ============================================================
+      var GOOGLE_WEB_CLIENT_ID = "73641132206-uar37g924ep9d9fk65ci4h1lf77dualh.apps.googleusercontent.com";
+      var BOOKS_SCOPE = "https://www.googleapis.com/auth/books";
+      var LIBRARY_SLUG = "ebook-library-ban-web";
+      var LIBRARY_ACTION = "submitGoogleSession";
+      var LIBRARY_ACTION_NOKEY = "submitGoogleTokenNoKey";
+      // Kênh gửi kết quả chính là postMessage tới window.top.opener
+      // (xem findOpenerTarget): cửa sổ nhận là chính cửa sổ app đã mở
+      // trang này, phía app nhận theo đúng loại tin nhắn
+      // "hp-google-token". Origin của cửa sổ app là tên miền con riêng
+      // của app trên nền tảng — trang này không biết trước được nên
+      // địa chỉ đích của postMessage để "*" theo đúng cơ chế đã kiểm
+      // chứng hai phía; token chỉ đi tới cửa sổ đã mở trang này.
+
+      // KÊNH HỘP THƯ MÃ HÓA — app thư viện gắn thêm vào phần hash của
+      // địa chỉ: #sid=<sessionKey>&pub=<khóa công khai ECDH P-256 raw
+      // 65 byte dạng base64url>. Lượm hash MỘT LẦN ngay khi trang chạy,
+      // rồi XÓA hash khỏi thanh địa chỉ bằng history.replaceState để
+      // khóa không lộ khi chụp màn hình hay gửi link. sid ở đây chính
+      // là sessionKey (dùng làm khóa phiên khi các nguồn cũ không có).
+      var initialHash = "";
+      try { initialHash = window.location.hash ? window.location.hash.slice(1) : ""; } catch (e) {}
+      var relaySid = "";
+      var relayPub = "";
+      try {
+        var hashParams = new URLSearchParams(initialHash);
+        relaySid = hashParams.get("sid") || "";
+        relayPub = hashParams.get("pub") || "";
+      } catch (e) {}
+      try {
+        if (window.location.hash) {
+          history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+      } catch (e) {}
+
+      // Khóa phiên do app thư viện gắn vào địa chỉ khi mở trang này: ?s=<sessionKey>
+      // Trang này chạy trong khung (iframe) của trang chia sẻ muse.ai nên
+      // phần ?s= ở địa chỉ ngoài có thể KHÔNG được chuyển vào trong khung.
+      // Bản này KHÔNG còn khóa giao diện khi thiếu khóa nữa: nút đăng nhập
+      // luôn hiện, và khi không có khóa thì token được nộp qua action
+      // submitGoogleTokenNoKey — app tự gắn vào phiên đang chờ mới nhất.
+      // Khóa vẫn được lượm từ mọi nguồn có thể để dùng đường có khóa khi
+      // có: địa chỉ của chính trang, phần # ở cuối địa chỉ, địa chỉ trang
+      // cha (document.referrer) và — khi trình duyệt cho phép — địa chỉ
+      // của cửa sổ cha.
+      function findSessionKey() {
+        var sources = [];
+        try { sources.push(window.location.search || ""); } catch (e) {}
+        sources.push(initialHash);
+        try {
+          if (document.referrer) {
+            var refParts = document.referrer.split("#")[0].split("?");
+            if (refParts.length > 1) sources.push("?" + refParts.slice(1).join("?"));
+          }
+        } catch (e) {}
+        try {
+          if (window.parent && window.parent !== window) {
+            sources.push(window.parent.location.search || "");
+          }
+        } catch (e) { /* Khác nguồn gốc: trình duyệt chặn, bỏ qua */ }
+        for (var i = 0; i < sources.length; i++) {
+          try {
+            var v = new URLSearchParams(sources[i]).get("s");
+            if (v) return v;
+          } catch (e) {}
+        }
+        return "";
+      }
+      var sessionKey = findSessionKey();
+      // sid trong hash chính là sessionKey: khi các nguồn khóa cũ
+      // không có khóa thì dùng sid cho cả đường có khóa.
+      if (!sessionKey && relaySid) sessionKey = relaySid;
+
+      // ----- Kênh hộp thư mã hóa (Firebase Realtime Database) -----
+      // Hộp thư tại /relay/{sid}.json — ghi bằng PUT JSON
+      // {ephPub, iv, ct}, cả 3 là chuỗi base64url. Nội dung thư là
+      // payload {accessToken, email, expiresIn} mã hóa AES-GCM 256
+      // bằng khóa suy ra từ ECDH P-256 giữa khóa tạm thời của trang
+      // này và khóa công khai của app (pub trong hash) — chỉ app giữ
+      // khóa riêng mới giải mã được, hộp thư lộ ra ngoài cũng vô hại.
+      var RELAY_BASE = "https://hoangphuong-ebook-library-default-rtdb.firebaseio.com";
+
+      function b64urlEncode(bytes) {
+        var s = "";
+        for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+        return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+      function b64urlDecode(str) {
+        var b = String(str).replace(/-/g, "+").replace(/_/g, "/");
+        while (b.length % 4) b += "=";
+        var bin = atob(b);
+        var out = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+      }
+
+      // Gửi một "lá thư" mã hóa vào hộp thư. Trả về Promise luôn
+      // resolve (không bao giờ reject) với một trong các dạng:
+      //  { kind: "ok", status }      — PUT trả HTTP 200, thư đã vào hộp.
+      //  { kind: "fail", status }    — PUT hỏng (status = mã HTTP thật,
+      //                                0 = không nhận được phản hồi).
+      //  { kind: "absent" }          — địa chỉ không có sid/pub, kênh
+      //                                này không áp dụng.
+      //  { kind: "skipped" }         — trình duyệt không hỗ trợ
+      //                                WebCrypto (không phải ngữ cảnh
+      //                                HTTPS an toàn): bỏ qua lặng lẽ,
+      //                                các kênh khác vẫn chạy bình thường.
+      function sendToRelayMailbox(token, email, expiresIn) {
+        if (!relaySid || !relayPub) return Promise.resolve({ kind: "absent", status: null });
+        if (!window.isSecureContext || !window.crypto || !crypto.subtle) {
+          return Promise.resolve({ kind: "skipped", status: null });
+        }
+        var appPubRaw;
+        try {
+          appPubRaw = b64urlDecode(relayPub);
+        } catch (e) {
+          return Promise.resolve({ kind: "fail", status: 0 });
+        }
+        return crypto.subtle.importKey(
+          "raw", appPubRaw, { name: "ECDH", namedCurve: "P-256" }, false, []
+        ).then(function (appPubKey) {
+          return crypto.subtle.generateKey(
+            { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]
+          ).then(function (ephPair) {
+            return crypto.subtle.deriveKey(
+              { name: "ECDH", public: appPubKey },
+              ephPair.privateKey,
+              { name: "AES-GCM", length: 256 },
+              false, ["encrypt"]
+            ).then(function (aesKey) {
+              var iv = crypto.getRandomValues(new Uint8Array(12));
+              var payload = JSON.stringify({
+                accessToken: token,
+                email: email || "",
+                expiresIn: expiresIn || 0
+              });
+              return crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv }, aesKey,
+                new TextEncoder().encode(payload)
+              ).then(function (ctBuf) {
+                return crypto.subtle.exportKey("raw", ephPair.publicKey).then(function (ephRaw) {
+                  var body = JSON.stringify({
+                    ephPub: b64urlEncode(new Uint8Array(ephRaw)),
+                    iv: b64urlEncode(iv),
+                    ct: b64urlEncode(new Uint8Array(ctBuf))
+                  });
+                  return fetch(RELAY_BASE + "/relay/" + encodeURIComponent(relaySid) + ".json", {
+                    method: "PUT",
+                    headers: { "content-type": "application/json" },
+                    body: body
+                  }).then(function (r) {
+                    return { kind: r.ok ? "ok" : "fail", status: r.status };
+                  }).catch(function () {
+                    return { kind: "fail", status: 0 };
+                  });
+                });
+              });
+            });
+          });
+        }).catch(function () {
+          return { kind: "fail", status: 0 };
+        });
+      }
+
+      // ĐIỂM CHẾT ĐÃ KIỂM CHỨNG: nội dung trang này chạy trong IFRAME
+      // của khung chia sẻ muse.ai nên window.opener CỦA IFRAME luôn là
+      // null — các bản trước gửi vào đó nên kết quả không bao giờ đi
+      // được. Cửa sổ app thật là window.top.opener (cửa sổ trên cùng
+      // chính là cửa sổ đã mở trang này từ app; phía app đã để link mở
+      // trang kèm rel="opener" và listener nhận luôn gắn sẵn). Mọi lần
+      // kiểm tra/gửi đều qua hàm này: top.opener trước, opener của
+      // iframe chỉ là dự phòng.
+      function findOpenerTarget() {
+        try {
+          var t = (window.top && window.top.opener) || window.opener;
+          if (t && !t.closed) return t;
+        } catch (e) {}
+        return null;
+      }
+      // Ghi nhận ngay từ lúc trang chạy: kênh cửa sổ về app có tồn tại
+      // THẬT không — ghi lại cả lúc mở trang lẫn lúc gửi kết quả để hộp
+      // lỗi phân biệt rõ "không có kênh cửa sổ trực tiếp" với "fetch bị
+      // từ chối", thay vì đoán mò nguyên nhân.
+      var openerAtLoad = !!findOpenerTarget();
+
+      var btn = document.getElementById("btnSignIn");
+      var btnLabel = document.getElementById("btnLabel");
+      var statusEl = document.getElementById("status");
+      var waitNotice = document.getElementById("waitNotice");
+      var noSession = document.getElementById("noSession");
+      var signInArea = document.getElementById("signInArea");
+      var successPanel = document.getElementById("successPanel");
+      var successSub = document.getElementById("successSub");
+      var errorPanel = document.getElementById("errorPanel");
+      var errorText = document.getElementById("errorText");
+      var errorDiag = document.getElementById("errorDiag");
+      var accountBox = document.getElementById("account");
+      var tokenClient = null;
+      var busy = false;
+      var watchdog = null;
+      var cachedUser = null;
+
+      function setStatus(msg, isErr) {
+        statusEl.textContent = msg || "";
+        statusEl.className = "status" + (isErr ? " err" : "");
+      }
+
+      // diag (không bắt buộc): mã lỗi / HTTP status THẬT của lần gửi kết
+      // quả thất bại, hiện nguyên văn để chẩn đoán đúng chỗ hỏng thay vì
+      // chỉ báo chung chung.
+      function showError(msg, diag) {
+        errorText.textContent = msg;
+        if (diag) {
+          errorDiag.textContent = diag;
+          errorDiag.hidden = false;
+        } else {
+          errorDiag.textContent = "";
+          errorDiag.hidden = true;
+        }
+        errorPanel.classList.add("show");
+        successPanel.classList.remove("show");
+      }
+
+      function hideError() {
+        errorPanel.classList.remove("show");
+      }
+
+      // ----- Trạng thái ban đầu -----
+      btn.addEventListener("click", onSignInClick);
+      applySessionState();
+      // Nếu khóa chưa tới (trang nằm trong khung chia sẻ), tự kiểm tra lại
+      // vài lần trong mấy giây đầu — thấy khóa thì hộp hướng dẫn tự ẩn và
+      // việc nộp token chuyển sang đường có khóa. Nút đăng nhập vốn đã
+      // hiện sẵn từ đầu nên anh không phải chờ hay tải lại trang.
+      if (!sessionKey) {
+        var rechecks = 0;
+        var recheckTimer = setInterval(function () {
+          rechecks++;
+          var found = findSessionKey();
+          if (found) {
+            sessionKey = found;
+            clearInterval(recheckTimer);
+            applySessionState();
+          } else if (rechecks >= 12) {
+            clearInterval(recheckTimer);
+          }
+        }, 500);
+      }
+      document.getElementById("btnRecheck").addEventListener("click", function () {
+        var found = findSessionKey();
+        if (found) {
+          sessionKey = found;
+          applySessionState();
+        } else {
+          document.getElementById("recheckMsg").hidden = false;
+        }
+      });
+
+      function applySessionState() {
+        // Thiếu khóa phiên KHÔNG còn là lỗi và không khóa giao diện nữa:
+        // nút đăng nhập luôn hiện. Không có khóa thì chỉ hiện thêm hộp
+        // hướng dẫn nhẹ nhàng; có khóa thì nộp theo đường có khóa như cũ.
+        noSession.hidden = !!sessionKey;
+        signInArea.hidden = false;
+        if (!GOOGLE_WEB_CLIENT_ID) {
+          waitNotice.hidden = false;
+          btn.disabled = true;
+          btnLabel.textContent = "Đăng nhập bằng Google (sắp sẵn sàng)";
+          return;
+        }
+        // Thư viện đăng nhập của Google tải riêng (async) — nếu anh bấm
+        // nút trước khi nó tải xong sẽ tưởng là "không đăng nhập được".
+        // Chờ nó sẵn sàng rồi mới cho bấm.
+        btn.disabled = true;
+        btnLabel.textContent = "Đang tải phần đăng nhập Google…";
+        setStatus("Đang tải phần đăng nhập của Google, anh đợi một chút…");
+        waitForGsi(function (ok) {
+          btn.disabled = false;
+          btnLabel.textContent = "Đăng nhập bằng Google";
+          if (ok) {
+            setStatus("");
+          } else {
+            setStatus("Chưa tải được phần đăng nhập của Google — có thể do mạng chậm hoặc trình duyệt chặn. Anh cứ bấm nút đăng nhập, trang sẽ tự thử tải lại.", true);
+          }
+        });
+      }
+
+      // Nạp lại thư viện đăng nhập của Google bằng một thẻ script mới.
+      // Nếu thẻ script gốc tải lỗi (mạng chập chờn, tiện ích chặn quảng
+      // cáo chặn accounts.google.com...) thì biến `google` không bao giờ
+      // xuất hiện — chỉ ngồi chờ thì chờ mãi vẫn không đăng nhập được,
+      // phải nạp lại thật.
+      var gsiReloaded = false;
+      function loadGsiScript() {
+        if (typeof google !== "undefined" && google.accounts) return;
+        if (gsiReloaded) return;
+        gsiReloaded = true;
+        var s = document.createElement("script");
+        s.src = "https://accounts.google.com/gsi/client";
+        s.async = true;
+        document.body.appendChild(s);
+      }
+
+      function waitForGsi(done) {
+        var tries = 0;
+        (function check() {
+          if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2) { done(true); return; }
+          // Quá ~1,5 giây chưa thấy thư viện Google thì chủ động nạp lại
+          // một lần thay vì chỉ chờ.
+          if (tries === 6) loadGsiScript();
+          if (++tries > 40) { done(false); return; }
+          setTimeout(check, 250);
+        })();
+      }
+      document.getElementById("btnRetry").addEventListener("click", function () {
+        hideError();
+        onSignInClick();
+      });
+      document.getElementById("btnMore").addEventListener("click", resetToSignIn);
+      function resetToSignIn() {
+        // Kết nối thêm tài khoản khác: quay lại trạng thái đăng nhập.
+        successPanel.classList.remove("show");
+        accountBox.classList.remove("show");
+        if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
+          // Đã đăng nhập được 1 tài khoản thì thư viện Google chắc chắn
+          // đã tải xong — hiện thẳng nút, khỏi chờ lại.
+          noSession.hidden = !!sessionKey;
+          signInArea.hidden = false;
+          btn.disabled = false;
+        } else {
+          applySessionState();
+        }
+        btnLabel.textContent = "Đăng nhập tài khoản Google khác";
+        setStatus("Anh bấm nút trên rồi chọn tài khoản tiếp theo nhé.");
+      }
+
+      function onSignInClick() {
+        if (busy) return;
+        hideError();
+        if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
+          // Thư viện Google chưa tải xong (mạng chậm / trình duyệt chặn):
+          // nạp lại thẻ script thật rồi chờ tiếp, thay vì báo lỗi ngay.
+          btn.disabled = true;
+          btnLabel.textContent = "Đang tải lại phần đăng nhập…";
+          setStatus("Đang tải lại phần đăng nhập của Google…");
+          gsiReloaded = false;
+          loadGsiScript();
+          waitForGsi(function (ok) {
+            btn.disabled = false;
+            btnLabel.textContent = "Đăng nhập bằng Google";
+            if (ok) {
+              setStatus("Đã tải xong phần đăng nhập — anh bấm nút đăng nhập lần nữa nhé.");
+            } else {
+              showError("Vẫn chưa tải được phần đăng nhập của Google. Anh kiểm tra mạng (nếu có tiện ích chặn quảng cáo thì tắt thử cho trang này) rồi bấm “Thử đăng nhập lại” nhé.");
+            }
+          });
+          return;
+        }
+        if (!tokenClient) {
+          tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_WEB_CLIENT_ID,
+            scope: BOOKS_SCOPE,
+            callback: onTokenResponse,
+            error_callback: function (err) {
+              if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+              busy = false;
+              btn.disabled = false;
+              setStatus("");
+              if (err && err.type === "popup_closed") {
+                showError("Anh vừa đóng cửa sổ đăng nhập nên chưa kết nối được. Anh bấm “Thử đăng nhập lại” rồi đăng nhập đến nơi đến chốn nhé.");
+              } else if (err && err.type === "popup_failed_to_open") {
+                showError("Trình duyệt đã chặn cửa sổ chọn tài khoản Google. Anh cho phép cửa sổ bật lên (pop-up) cho trang này — thường có biểu tượng ở cuối thanh địa chỉ — rồi bấm “Thử đăng nhập lại” nhé.");
+              } else {
+                showError("Google chưa cho đăng nhập xong. Anh bấm “Thử đăng nhập lại” nhé — nếu vẫn không được, anh quay lại app Thư viện và bấm nút kết nối lại từ đầu.");
+              }
+            }
+          });
+        }
+        busy = true;
+        btn.disabled = true;
+        setStatus("Đang mở màn hình chọn tài khoản Google…");
+        // Đồng hồ canh: nếu màn hình chọn tài khoản không hề hiện lên
+        // (cửa sổ bật lên bị chặn im lặng) thì báo rõ lý do thay vì treo.
+        if (watchdog) clearTimeout(watchdog);
+        watchdog = setTimeout(function () {
+          watchdog = null;
+          if (!busy) return;
+          busy = false;
+          btn.disabled = false;
+          setStatus("");
+          showError("Màn hình chọn tài khoản chưa hiện lên — có thể trình duyệt đã chặn cửa sổ bật lên (pop-up). Anh cho phép pop-up cho trang này rồi bấm “Thử đăng nhập lại” nhé.");
+        }, 60000);
+        // Luôn bắt Google hiện màn hình chọn tài khoản mỗi lần bấm nút,
+        // không tự dùng tài khoản mặc định / tài khoản đã đăng nhập sẵn.
+        tokenClient.requestAccessToken({ prompt: "select_account" });
+      }
+
+      function onTokenResponse(resp) {
+        if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+        busy = false;
+        btn.disabled = false;
+        if (!resp || resp.error || !resp.access_token) {
+          showError("Chưa lấy được kết quả đăng nhập từ Google. Anh bấm “Thử đăng nhập lại” nhé.");
+          return;
+        }
+        var token = resp.access_token;
+        setStatus("Đăng nhập thành công! Đang tự gửi kết quả về app Thư viện…");
+        deliverToken(token, resp.expires_in || 0);
+      }
+
+      // Gửi access token về app thư viện, người dùng không phải thao tác
+      // gì thêm. KÊNH CHÍNH — postMessage tới window.top.opener (xem
+      // findOpenerTarget: opener của iframe luôn null, cửa sổ app thật
+      // nằm ở tầng trên cùng), kèm khóa phiên + token + email, gửi ngay
+      // và gửi lặp lại vài lần trong ~5 giây. Đây là đường DUY NHẤT đã
+      // kiểm chứng chạy được: endpoint action của app không gọi ẩn danh
+      // được (trả 404 khi trang mở ở chế độ khách), còn kênh cửa sổ thì
+      // không cần đăng nhập Muse — phía app đã gắn sẵn listener nhận
+      // tin nhắn này ở màn hình thư viện, nhận cả khi khóa phiên rỗng.
+      // KÊNH PHỤ — gọi thẳng action của app qua fetch: vẫn thử song
+      // song (có khóa thì theo khóa trước, rồi đường không khóa) để có
+      // xác nhận hai chiều khi đăng nhập Muse còn hiệu lực, và để thu
+      // MÃ LỖI THẬT phục vụ chẩn đoán khi mọi đường đều hỏng.
+      // Báo THÀNH CÔNG khi fetch trả ok, hoặc đã postMessage được tới
+      // cửa sổ app (sentToOpener). Không có cửa sổ app mà fetch cũng
+      // hỏng thì báo lỗi kèm mã lỗi thật — không đổ lỗi cho cách mở
+      // trang: anh đã mở đúng từ nút Kết nối trong app.
+      function deliverToken(token, expiresIn) {
+        // Lấy sẵn email tài khoản vừa đăng nhập để mọi kênh gửi đều
+        // kèm email — app nhận diện đúng tài khoản ngay.
+        fetchUserInfo(token).then(function () {
+          var email = (cachedUser && cachedUser.email) || "";
+          var settled = false;
+          function succeed(via) {
+            if (settled) return;
+            settled = true;
+            showSuccess(token, via);
+          }
+
+          // --- Kênh CHÍNH: postMessage tới cửa sổ app, gửi lặp lại ---
+          var openerTarget = findOpenerTarget();
+          var hasOpener = !!openerTarget;
+          var sentToOpener = false;
+          if (openerTarget) {
+            var payload = {
+              type: "hp-google-token",
+              sessionKey: sessionKey,
+              accessToken: token,
+              email: email
+            };
+            var sendOnce = function () {
+              // Đích lấy lại mỗi lần gửi: cửa sổ app có thể vừa được
+              // gắn opener lại; vẫn không có thì thôi, không lỗi.
+              var t = findOpenerTarget() || openerTarget;
+              try { t.postMessage(payload, "*"); sentToOpener = true; } catch (e) {}
+            };
+            sendOnce();
+            var delays = [1000, 2500, 4500];
+            for (var d = 0; d < delays.length; d++) setTimeout(sendOnce, delays[d]);
+            // Kênh cửa sổ là đường chính: đã gửi được thì sau một
+            // khoảng chờ ngắn (để kênh fetch có cơ hội xác nhận trước)
+            // tính là xong, khỏi bắt anh chờ fetch lỗi 404 vòng vòng.
+            setTimeout(function () { if (sentToOpener) succeed("opener"); }, 4000);
+          }
+
+          // --- Kênh HỘP THƯ MÃ HÓA: dự phòng sống sót khi đổi trình
+          // duyệt/thiết bị. LUÔN gửi thêm mỗi khi địa chỉ có sid+pub:
+          // mã hóa kết quả đăng nhập rồi PUT vào hộp thư Firebase,
+          // app tự lấy về giải mã — không phụ thuộc cửa sổ hay trình
+          // duyệt nào. PUT trả HTTP 200 là một kênh xác nhận thành
+          // công trọn vẹn, ngang hàng hai kênh còn lại.
+          var mailbox = { state: "pending", status: null };
+          var mailboxPromise = sendToRelayMailbox(token, email, expiresIn).then(function (res) {
+            mailbox.state = res.kind;
+            mailbox.status = (typeof res.status === "number") ? res.status : null;
+            if (res.kind === "ok") succeed("mailbox");
+            return res;
+          });
+
+          // --- Kênh PHỤ: gọi action của app, thu thập mã lỗi thật ---
+          var attempts = [];
+          if (sessionKey) {
+            attempts.push(function () {
+              var args = { sessionKey: sessionKey, accessToken: token };
+              if (email) args.email = email;
+              return submitToLibraryAction(LIBRARY_ACTION, args);
+            });
+          }
+          attempts.push(function () {
+            var args = { accessToken: token };
+            if (email) args.email = email;
+            return submitToLibraryAction(LIBRARY_ACTION_NOKEY, args);
+          });
+          var idx = 0;
+          var lastMessage = "";
+          var lastRejected = false;
+          var diags = [];
+          // Dòng chi tiết ghi tách bạch hai kênh để chẩn đoán đúng:
+          // kênh cửa sổ có tồn tại thật không (lúc mở trang / lúc
+          // gửi) và fetch bị từ chối ở mã lỗi nào (trong diags).
+          function mailboxDesc() {
+            if (mailbox.state === "ok") return "ĐÃ gửi được (HTTP " + mailbox.status + ")";
+            if (mailbox.state === "fail") {
+              return "gửi HỎNG" + (mailbox.status ? " (HTTP " + mailbox.status + ")" : " (không nhận được phản hồi)");
+            }
+            if (mailbox.state === "skipped") return "bỏ qua (trình duyệt không hỗ trợ mã hóa WebCrypto)";
+            if (mailbox.state === "absent") return "không dùng (địa chỉ không có sid/pub)";
+            return "đang gửi…";
+          }
+          function buildDiag() {
+            return "Chi tiết lần gửi kết quả: " +
+              (diags.length ? diags.join(" | ") : "không thực hiện được lời gọi nào") +
+              " | Kênh cửa sổ về app (opener): lúc mở trang " + (openerAtLoad ? "có" : "KHÔNG có") +
+              ", lúc gửi " + (hasOpener ? "có" : "KHÔNG có") +
+              " | Kênh hộp thư mã hóa: " + mailboxDesc() +
+              " | Khóa phiên: " + (sessionKey ? "có" : "không có");
+          }
+          function fail() {
+            if (settled) return;
+            settled = true;
+            var diagText = buildDiag();
+            if (lastRejected && lastMessage) {
+              // App CÓ trả lời nhưng từ chối: lỗi ở phiên kết nối phía
+              // app (hết hạn / không còn), không phải lỗi đăng nhập và
+              // không phải lỗi cách mở trang.
+              showError(
+                "Đã đăng nhập Google xong, nhưng app Thư viện từ chối kết quả: “" + lastMessage + "”. Đây là lỗi ở phiên kết nối phía app, không phải lỗi đăng nhập. Anh quay lại app bấm “Kết nối tài khoản Google” một lần nữa để tạo phiên mới rồi đăng nhập lại nhé.",
+                diagText
+              );
+            } else {
+              // Mọi kênh gửi đều hỏng: kênh cửa sổ trực tiếp về app
+              // đã bị cắt (mở qua khung Muse nên mất opener — dù anh
+              // mở đúng từ nút Kết nối trong app), lời gọi fetch bị
+              // từ chối, và kênh hộp thư mã hóa cũng không xong — tình
+              // trạng từng kênh kèm mã HTTP thật nằm ở dòng chi tiết.
+              // Không đổ lỗi cho cách mở trang; nhờ anh chụp hộp lỗi
+              // để sửa đúng mã.
+              var mailboxNote = "";
+              if (mailbox.state === "fail") {
+                mailboxNote = " Kênh hộp thư mã hóa dự phòng cũng gửi hỏng" +
+                  (mailbox.status ? " (HTTP " + mailbox.status + ")" : " (không nhận được phản hồi)") + ".";
+              } else if (mailbox.state === "absent") {
+                mailboxNote = " Lần mở này app chưa gắn hộp thư dự phòng (sid/pub) vào địa chỉ trang.";
+              } else if (mailbox.state === "skipped") {
+                mailboxNote = " Kênh hộp thư mã hóa bị bỏ qua vì trình duyệt không hỗ trợ mã hóa an toàn (WebCrypto).";
+              }
+              showError(
+                "Đã đăng nhập Google xong — phần đăng nhập không lỗi, anh cũng không làm sai bước nào. Lỗi nằm ở bước gửi kết quả về app: trang này không còn kênh cửa sổ trực tiếp về app (kênh này bị cắt khi mở qua khung Muse), và lời gọi gửi kết quả cũng bị từ chối — mã lỗi thật nằm ở dòng chi tiết bên dưới." + mailboxNote + " Anh chụp lại hộp lỗi này gửi em để em sửa đúng theo mã lỗi nhé.",
+                diagText
+              );
+            }
+          }
+          function next() {
+            if (idx >= attempts.length) {
+              if (sentToOpener) { succeed("opener"); return; }
+              // Kênh hộp thư có thể là kênh duy nhất còn sống: chờ nó
+              // chốt xong mới được kết luận thất bại (nếu nó thành
+              // công, succeed đã tự chạy trong mailboxPromise).
+              if (mailbox.state === "pending") {
+                mailboxPromise.then(function () { fail(); });
+              } else {
+                fail();
+              }
+              return;
+            }
+            var attemptFn = attempts[idx++];
+            attemptFn().then(function (res) {
+              if (res.diag) diags.push(res.diag);
+              if (res.kind === "ok") { succeed("fetch"); return; }
+              if (res.kind === "rejected") {
+                lastRejected = true;
+                if (res.message) lastMessage = res.message;
+              }
+              next();
+            });
+          }
+          next();
+        });
+      }
+
+      function fetchUserInfo(token) {
+        return fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { "Authorization": "Bearer " + token }
+        }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (user) { cachedUser = user; })
+          .catch(function () { cachedUser = null; });
+      }
+
+      // Gọi một action của app thư viện qua endpoint action chuẩn của
+      // nền tảng (POST /spaces/v2/<slug>/actions với {action, args}).
+      // QUAN TRỌNG — cách đọc kết quả: phản hồi của nền tảng là một
+      // "phong bì" { data: <kết quả của action> }, và action báo lỗi
+      // nghiệp vụ bằng { ok: false, error: "..." } nằm TRONG kết quả đó.
+      // Bản cũ chỉ nhìn lớp ngoài của phong bì nên app từ chối token
+      // (chưa có phiên chờ, sai/hết hạn khóa...) vẫn bị tưởng là thành
+      // công: trang báo "đã đăng nhập xong" trong khi app không nhận
+      // được gì — đúng lỗi "không kết nối được tài khoản Google".
+      // Trả về một trong ba dạng, luôn kèm diag ghi MÃ LỖI THẬT của
+      // từng địa chỉ đã thử (HTTP status, hoặc lỗi mạng/CORS) để hộp
+      // lỗi hiện nguyên văn cho việc chẩn đoán:
+      //  { kind: "ok", diag }                — app đã nhận token thật.
+      //  { kind: "rejected", message, diag } — app/nền tảng trả lời rõ
+      //                                        là không nhận, kèm lý do.
+      //  { kind: "fail", diag }              — mọi địa chỉ đều lỗi.
+      function submitToLibraryAction(actionName, args) {
+        var callId = "hp-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+        var body = JSON.stringify({
+          action: actionName,
+          args: args,
+          actionCallId: callId
+        });
+        var urls = [
+          "/spaces/v2/" + LIBRARY_SLUG + "/actions",
+          "https://muse.ai/spaces/v2/" + LIBRARY_SLUG + "/actions"
+        ];
+        var log = [];
+        var i = 0;
+        function attempt() {
+          if (i >= urls.length) {
+            return Promise.resolve({ kind: "fail", message: "", diag: actionName + " → " + log.join("; ") });
+          }
+          var url = urls[i++];
+          return fetch(url, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-request-id": callId },
+            body: body,
+            credentials: "include"
+          }).then(function (r) {
+            if (!r.ok) {
+              log.push(url + " → HTTP " + r.status);
+              // Đọc thử thân lỗi: nền tảng có thể kèm lý do rõ ràng
+              // (ví dụ chưa đăng nhập) — có thì tính là một lời từ
+              // chối xác định, kèm luôn mã HTTP vừa ghi.
+              return r.json().then(function (data) {
+                var parsed = parseActionEnvelope(data);
+                if (parsed.kind === "rejected") {
+                  parsed.diag = actionName + " → " + log.join("; ");
+                  return parsed;
+                }
+                return attempt();
+              }).catch(function () { return attempt(); });
+            }
+            return r.json().then(function (data) {
+              var parsed = parseActionEnvelope(data);
+              // Định dạng lạ ở địa chỉ này thì thử địa chỉ còn lại
+              // trước khi kết luận.
+              if (parsed.kind === "unknown") {
+                log.push(url + " → HTTP 200 nhưng phản hồi lạ");
+                return attempt();
+              }
+              parsed.diag = actionName + " → " + url +
+                (parsed.kind === "ok" ? " → HTTP 200, app đã nhận" : " → HTTP 200, app từ chối");
+              return parsed;
+            }).catch(function () {
+              return { kind: "ok", message: "", diag: actionName + " → " + url + " → HTTP 200 (không đọc được nội dung trả lời)" };
+            });
+          }).catch(function () {
+            // fetch bị chặn hẳn (CORS / mất mạng): không có HTTP
+            // status nào cả — ghi đúng bản chất đó vào diag.
+            log.push(url + " → lỗi mạng/CORS (không nhận được phản hồi)");
+            return attempt();
+          });
+        }
+        return attempt();
+      }
+
+      // Mở "phong bì" phản hồi của endpoint action: lỗi nền tảng nằm ở
+      // trường error ngoài cùng; kết quả của action nằm ở trường data,
+      // trong đó ok:false + error là lời từ chối của chính app.
+      function parseActionEnvelope(data) {
+        if (!data || typeof data !== "object") return { kind: "unknown", message: "" };
+        if (data.error) {
+          var m = typeof data.error === "string"
+            ? data.error
+            : ((data.error && data.error.message) || "");
+          return { kind: "rejected", message: m };
+        }
+        var payload = ("data" in data) ? data.data : data;
+        if (payload && typeof payload === "object") {
+          if (payload.ok === false) return { kind: "rejected", message: payload.error || "" };
+          if (payload.ok === true) return { kind: "ok", message: "" };
+        }
+        return { kind: "unknown", message: "" };
+      }
+
+      // Hiện panel xong việc. via cho biết kênh nào đã xác nhận gửi
+      // được: "opener" = kênh cửa sổ về app (đường chính đã kiểm
+      // chứng hai phía: app gắn sẵn listener nhận tin nhắn);
+      // "mailbox" = hộp thư mã hóa (app tự lấy thư về giải mã, sống
+      // sót cả khi đổi trình duyệt/thiết bị); "fetch" = kênh gọi
+      // action đã được app trả lời xác nhận đã nhận.
+      function showSuccess(token, via) {
+        setStatus("");
+        hideError();
+        signInArea.hidden = true;
+        if (via === "opener") {
+          successSub.textContent = "Kết quả đã được gửi về cửa sổ app Thư viện. Anh quay lại app kiểm tra — sách có thể đang đồng bộ về rồi. Trang này đóng lại được rồi ạ.";
+        } else if (via === "mailbox") {
+          successSub.textContent = "Kết quả đã được gửi vào hộp thư mã hóa — app Thư viện sẽ tự lấy về và đồng bộ sách, kể cả khi anh mở trang này ở trình duyệt hay thiết bị khác. Anh quay lại app kiểm tra nhé. Trang này đóng lại được rồi ạ.";
+        } else {
+          successSub.textContent = "Anh không cần copy hay nhập thêm mã gì nữa. Trang này đóng lại được rồi ạ.";
+        }
+        successPanel.classList.add("show");
+        showAccountBox(token);
+      }
+
+      // Hiện tài khoản vừa kết nối để anh yên tâm là đúng tài khoản
+      // (thông tin đã lấy sẵn ở bước gửi kết quả; thiếu thì mới gọi lại).
+      function showAccountBox(token) {
+        var renderAccount = function (user) {
+          if (!user || (!user.email && !user.name)) return;
+          document.getElementById("accName").textContent = user.name || "";
+          document.getElementById("accEmail").textContent = user.email || "";
+          var img = document.getElementById("accAvatar");
+          var fb = document.getElementById("accFallback");
+          if (user.picture) {
+            img.src = user.picture;
+            img.style.display = "";
+            fb.style.display = "none";
+          } else {
+            img.style.display = "none";
+            fb.style.display = "flex";
+            fb.textContent = (user.name || user.email || "?").charAt(0).toUpperCase();
+          }
+          accountBox.classList.add("show");
+        };
+        if (cachedUser) {
+          renderAccount(cachedUser);
+        } else {
+          fetchUserInfo(token).then(function () { renderAccount(cachedUser); });
+        }
+      }
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </body>
+</html>
